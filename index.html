@@ -49,7 +49,6 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script type="module" src="./auth.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -768,10 +767,9 @@
         return;
       }
 
-      container.innerHTML = state.filteredHistoryRows.map(r => renderTransactionRowHtml(r, false)).join('');
+      container.innerHTML = state.filteredHistoryRows.map(r => renderTransactionRowHtml(r)).join('');
     }
 
-    // 1. Update renderTransactionRowHtml(r) to include edit/delete buttons
     function renderTransactionRowHtml(r) {
       const isIncome = String(r.categoryType || '').toLowerCase().includes('income');
       const badgeClass = isIncome
@@ -800,10 +798,10 @@
           </div>
           <div class="flex items-center gap-2">
             <span class="${amountClass} text-sm">${isIncome ? '+' : '-'}${formatCurrency(r.amount)}</span>
-            <button type="button" onclick="app.editTransaction(${r.id})" title="Edit transaction" class="w-7 h-7 rounded-lg text-slate-400 hover:text-m3-primary hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs">
+            <button type="button" onclick="app.editTransaction('${escapeHtml(r.id)}')" title="Edit transaction" class="w-7 h-7 rounded-lg text-slate-400 hover:text-m3-primary hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button type="button" onclick="app.deleteTx(${r.id})" title="Delete transaction" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center justify-center text-xs">
+            <button type="button" onclick="app.deleteTx('${escapeHtml(r.id)}')" title="Delete transaction" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center justify-center text-xs">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -949,7 +947,6 @@
         });
       },
 
-      // 2. Inside window.app: support editing in openTransactionModal, saving in handleTxSubmit, and deleting in deleteTx
       openTransactionModal(editingRow = null) {
         const modal = document.getElementById('transactionModal');
         const title = document.getElementById('txModalTitle');
@@ -959,13 +956,13 @@
         if (editingRow) {
           state.editingTxId = editingRow.id;
           title.textContent = 'Edit Transaction';
-          document.getElementById('txId').value = editingRow.id;
+          document.getElementById('txId').value = String(editingRow.id ?? '');
           document.getElementById('txDate').value = String(editingRow.date || '').slice(0, 10);
           document.getElementById('txStore').value = editingRow.store || '';
           document.getElementById('txDescription').value = editingRow.description || '';
           document.getElementById('txAmount').value = Math.abs(Number(editingRow.amount) || 0);
           this.setFormType(editingRow.categoryType || 'Expense');
-          document.getElementById('txCategory').value = String(editingRow.category || '');
+          document.getElementById('txCategory').value = String(editingRow.category ?? '');
         } else {
           state.editingTxId = null;
           title.textContent = 'Add Transaction';
@@ -978,7 +975,7 @@
       },
 
       editTransaction(id) {
-        const row = state.enrichedRows.find((r) => Number(r.id) === Number(id));
+        const row = state.enrichedRows.find((r) => String(r.id) === String(id));
         if (row) this.openTransactionModal(row);
       },
 
@@ -987,19 +984,23 @@
         try {
           if (state.isApiLive && typeof window.deleteTransactionViaApi === 'function') {
             await window.deleteTransactionViaApi(id);
-            app.showToast('Transaction deleted from Supabase.');
+            this.showToast('Transaction deleted from Supabase.');
           } else {
-            state.rawTransactions = state.rawTransactions.filter((t) => Number(t.id) !== Number(id));
+            state.rawTransactions = state.rawTransactions.filter((t) => String(t.id) !== String(id));
             processLocalData();
-            app.showToast('Transaction deleted in Local Preview Mode.');
+            this.showToast('Transaction deleted in Local Preview Mode.');
           }
         } catch (err) {
-          app.showToast(`Error: ${err.message}`, true);
+          this.showToast(`Error: ${err.message}`, true);
         }
       },
 
       async handleTxSubmit(e) {
         e.preventDefault();
+        const rawTxId = state.editingTxId ?? document.getElementById('txId')?.value;
+        const hasEditingId = rawTxId !== null && rawTxId !== undefined && String(rawTxId).trim() !== '';
+        const txId = hasEditingId ? rawTxId : null;
+
         const date = document.getElementById('txDate').value;
         const store = String(document.getElementById('txStore').value || '').trim();
         const rawDesc = document.getElementById('txDescription').value;
@@ -1009,16 +1010,22 @@
 
         try {
           if (state.isApiLive) {
-            if (state.editingTxId && typeof window.updateTransactionViaApi === 'function') {
-              await window.updateTransactionViaApi(state.editingTxId, {
+            if (hasEditingId) {
+              if (typeof window.updateTransactionViaApi !== 'function') {
+                throw new Error('updateTransactionViaApi is not loaded');
+              }
+              await window.updateTransactionViaApi(txId, {
                 date,
                 store,
                 description,
                 amount,
                 categoryId
               });
-              app.showToast('Transaction updated via API!');
-            } else if (typeof window.createTransactionViaApi === 'function') {
+              this.showToast('Transaction updated via API!');
+            } else {
+              if (typeof window.createTransactionViaApi !== 'function') {
+                throw new Error('createTransactionViaApi is not loaded');
+              }
               await window.createTransactionViaApi({
                 date,
                 store,
@@ -1026,10 +1033,10 @@
                 amount,
                 categoryId
               });
-              app.showToast('Transaction saved via API!');
+              this.showToast('Transaction saved via API!');
             }
-          } else if (state.editingTxId) {
-            const idx = state.rawTransactions.findIndex((t) => Number(t.id) === Number(state.editingTxId));
+          } else if (hasEditingId) {
+            const idx = state.rawTransactions.findIndex((t) => String(t.id) === String(txId));
             if (idx !== -1) {
               state.rawTransactions[idx] = {
                 ...state.rawTransactions[idx],
@@ -1041,7 +1048,7 @@
               };
             }
             processLocalData();
-            app.showToast('Transaction updated in Local Preview Mode.');
+            this.showToast('Transaction updated in Local Preview Mode.');
           } else {
             state.rawTransactions.unshift({
               id: Date.now(),
@@ -1052,13 +1059,14 @@
               category: categoryId
             });
             processLocalData();
-            app.showToast('Transaction added in Local Preview Mode.');
+            this.showToast('Transaction added in Local Preview Mode.');
           }
 
           state.editingTxId = null;
+          document.getElementById('txId').value = '';
           this.closeTransactionModal();
         } catch (err) {
-          app.showToast(`Error: ${err.message}`, true);
+          this.showToast(`Error: ${err.message}`, true);
         }
       },
 
@@ -1089,30 +1097,6 @@
         catSelect.innerHTML = validCats.map(c => `
           <option value="${c.id}">${escapeHtml(c.subtype)}</option>
         `).join('');
-      },
-
-      async handleTxSubmit(e) {
-        e.preventDefault();
-        const date = document.getElementById('txDate').value;
-        const store = String(document.getElementById('txStore').value || '').trim();
-        const rawDesc = document.getElementById('txDescription').value;
-        const description = rawDesc && rawDesc.trim() ? rawDesc.trim() : null;
-        const amount = Math.abs(Number(document.getElementById('txAmount').value));
-        const categoryId = Number(document.getElementById('txCategory').value);
-
-        try {
-          if (state.isApiLive && typeof window.createTransactionViaApi === 'function') {
-            await window.createTransactionViaApi({ date, store, description, amount, categoryId });
-            app.showToast('Transaction saved to Supabase via API!');
-          } else {
-            state.rawTransactions.unshift({ id: Date.now(), date, store, description, amount, category: categoryId });
-            processLocalData();
-            app.showToast('Transaction added in Local Preview Mode.');
-          }
-          this.closeTransactionModal();
-        } catch (err) {
-          app.showToast(`Error: ${err.message}`, true);
-        }
       },
 
       openCategoryModal() {
