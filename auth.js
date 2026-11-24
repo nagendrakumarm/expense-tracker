@@ -134,6 +134,47 @@ export async function createTransactionViaApi({ date, store, description, amount
   return created;
 }
 
+export async function updateTransactionViaApi(txId, { date, store, description, amount, categoryId }) {
+  const payload = {
+    date: String(date || '').trim(),
+    store: String(store || '').trim(),
+    description: description && String(description).trim() ? String(description).trim() : null,
+    amount: Math.abs(Number(amount)),
+    category: Number(categoryId)
+  };
+
+  const res = await authFetch(`/api/transactions/${encodeURIComponent(txId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.detail || 'Failed to update transaction');
+  }
+
+  const updated = await res.json();
+  await refreshDashboardData(getSelectedYearMonth());
+  return updated;
+}
+
+export async function deleteTransactionViaApi(txId) {
+  const res = await authFetch(`/api/transactions/${encodeURIComponent(txId)}`, {
+    method: 'DELETE'
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.detail || 'Failed to delete transaction');
+  }
+
+  const deleted = await res.json();
+  await refreshDashboardData(getSelectedYearMonth());
+  return deleted;
+}
+
+
 if (loginForm) {
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -163,6 +204,8 @@ if (logoutBtn) {
 window.refreshDashboardData = refreshDashboardData;
 window.createTransactionViaApi = createTransactionViaApi;
 window.logoutApp = logout;
+window.updateTransactionViaApi = updateTransactionViaApi;
+window.deleteTransactionViaApi = deleteTransactionViaApi;
 
 window.addEventListener('DOMContentLoaded', () => {
   if (getAuthToken()) {
