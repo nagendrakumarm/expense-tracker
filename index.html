@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Material Finance - Expense & Monthly Income Tracker</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            m3: {
+              primary: '#6750A4',
+              onPrimary: '#FFFFFF',
+              primaryContainer: '#EADDFF',
+              onPrimaryContainer: '#21005D',
+              secondaryContainer: '#E8DEF8',
+              onSecondaryContainer: '#1D192B',
+              surface: '#FEF7FF',
+              surfaceContainer: '#F3EDF7',
+              surfaceContainerHigh: '#ECE6F0',
+              surfaceContainerHighest: '#E6E0E9',
+              onSurface: '#1D1B20',
+              onSurfaceVariant: '#49454F',
+              outline: '#79747E',
+              income: '#0F766E',
+              incomeContainer: '#CCFBF1',
+              expense: '#B91C1C',
+              expenseContainer: '#FEE2E2',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .m3-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .m3-card:hover {
+      transform: translateY(-1px);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-full flex flex-col pb-20 md:pb-6">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-m3-primary text-white flex items-center justify-center shadow-md font-bold text-lg">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">Material Finance</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Income & Expense Tracker</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Status Pill -->
+        <button id="statusPill" onclick="app.openConfigModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition">
+          <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          <span id="statusText">Demo Mode</span>
+        </button>
+
+        <!-- Dark Mode Toggle -->
+        <button onclick="app.toggleDarkMode()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          <i class="fa-solid fa-moon dark:hidden"></i>
+          <i class="fa-solid fa-sun hidden dark:block"></i>
+        </button>
+
+        <!-- Supabase Settings Button -->
+        <button onclick="app.openConfigModal()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Supabase Database Settings">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Toast Banner -->
+  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md pointer-events-none transition-all duration-300 opacity-0 translate-y-[-10px]">
+    <div id="toastContent" class="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-3 rounded-2xl shadow-xl text-sm flex items-center justify-between pointer-events-auto">
+      <span id="toastMessage">Notification message</span>
+      <button onclick="app.hideToast()" class="ml-3 text-xs opacity-75 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-5xl mx-auto w-full px-4 pt-4 flex-1">
+
+    <!-- Global Month Picker Bar -->
+    <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mb-5 flex items-center justify-between">
+      <button onclick="app.changeMonth(-1)" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold transition">
+        <i class="fa-solid fa-chevron-left text-xs"></i>
+      </button>
+      <div class="text-center">
+        <span class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold block">Selected Month</span>
+        <h2 id="currentMonthDisplay" class="text-base font-bold text-slate-800 dark:text-slate-100">November 2026</h2>
+      </div>
+      <button onclick="app.changeMonth(1)" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center font-bold transition">
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar border-b border-slate-200 dark:border-slate-800">
+      <button onclick="app.switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 bg-m3-primary text-white shadow-sm">
+        <i class="fa-solid fa-chart-pie"></i> Overview
+      </button>
+      <button onclick="app.switchTab('history')" id="tab-history" class="tab-btn px-4 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200">
+        <i class="fa-solid fa-list"></i> History
+      </button>
+      <button onclick="app.switchTab('categories')" id="tab-categories" class="tab-btn px-4 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200">
+        <i class="fa-solid fa-tags"></i> Categories
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <div id="view-overview" class="space-y-6">
+      
+      <!-- KPI Cards Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- Income Card -->
+        <div class="bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900/60 p-4 rounded-3xl m3-card">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">Total Income</span>
+            <div class="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/80 text-teal-700 dark:text-teal-300 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-arrow-down"></i>
+            </div>
+          </div>
+          <p id="kpiIncome" class="text-2xl font-extrabold text-teal-800 dark:text-teal-200">$0.00</p>
+          <p class="text-xs text-teal-600 dark:text-teal-400 mt-1"><span id="kpiIncomeCount">0</span> transactions</p>
+        </div>
+
+        <!-- Expense Card -->
+        <div class="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 p-4 rounded-3xl m3-card">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider">Total Expenses</span>
+            <div class="w-7 h-7 rounded-full bg-rose-100 dark:bg-rose-900/80 text-rose-700 dark:text-rose-300 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-arrow-up"></i>
+            </div>
+          </div>
+          <p id="kpiExpense" class="text-2xl font-extrabold text-rose-800 dark:text-rose-200">$0.00</p>
+          <p class="text-xs text-rose-600 dark:text-rose-400 mt-1"><span id="kpiExpenseCount">0</span> transactions</p>
+        </div>
+
+        <!-- Net Balance Card -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-3xl m3-card">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Net Balance</span>
+            <div id="netIcon" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+          </div>
+          <p id="kpiNet" class="text-2xl font-extrabold text-slate-900 dark:text-slate-100">$0.00</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Income minus Expenses</p>
+        </div>
+
+        <!-- Savings Rate Card -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-3xl m3-card">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Savings Rate</span>
+            <div class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-piggy-bank"></i>
+            </div>
+          </div>
+          <p id="kpiSavingsRate" class="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">0%</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Net Savings ratio</p>
+        </div>
+      </div>
+
+      <!-- Breakdown Charts Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Monthly Income by Category -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-teal-500"></span> Monthly Income by Category
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Itemized breakdown for selected month</p>
+            </div>
+            <span id="incomeCatTotalBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">$0.00</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center gap-6">
+            <div class="w-44 h-44 relative flex-shrink-0">
+              <canvas id="incomeDonutChart"></canvas>
+            </div>
+            <div id="incomeCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Expenses by Category -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500"></span> Monthly Expenses by Category
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Spending distribution</p>
+            </div>
+            <span id="expenseCatTotalBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">$0.00</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center gap-6">
+            <div class="w-44 h-44 relative flex-shrink-0">
+              <canvas id="expenseDonutChart"></canvas>
+            </div>
+            <div id="expenseCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Month Transactions Preview -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Month Activity Preview</h3>
+          <button onclick="app.switchTab('history')" class="text-xs font-semibold text-m3-primary hover:underline">View All</button>
+        </div>
+        <div id="recentTransactionsList" class="divide-y divide-slate-100 dark:divide-slate-800">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: HISTORY -->
+    <div id="view-history" class="space-y-4 hidden">
+      <!-- Search & Filter Controls -->
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="searchInput" oninput="app.filterHistory()" placeholder="Search store, description, category..." class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-m3-primary">
+          </div>
+          <div class="flex gap-2">
+            <select id="typeFilter" onchange="app.filterHistory()" class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+              <option value="ALL">All Types</option>
+              <option value="Income">Income Only</option>
+              <option value="Expense">Expense Only</option>
+            </select>
+            <select id="categoryFilter" onchange="app.filterHistory()" class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+              <option value="ALL">All Categories</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Transaction List -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div id="fullHistoryList" class="divide-y divide-slate-100 dark:divide-slate-800">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CATEGORIES -->
+    <div id="view-categories" class="space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold">Manage Categories</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Add or review income & expense categories</p>
+        </div>
+        <button onclick="app.openCategoryModal()" class="px-4 py-2 rounded-full bg-m3-primary text-white text-sm font-semibold hover:bg-opacity-90 transition flex items-center gap-2">
+          <i class="fa-solid fa-plus"></i> New Category
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Income Categories -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <h4 class="text-base font-bold text-teal-700 dark:text-teal-400 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-circle-down text-teal-500"></i> Income Subtypes
+          </h4>
+          <div id="incomeCategoryManageList" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Expense Categories -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+          <h4 class="text-base font-bold text-rose-700 dark:text-rose-400 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-circle-up text-rose-500"></i> Expense Subtypes
+          </h4>
+          <div id="expenseCategoryManageList" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FLOATING ACTION BUTTON (FAB) -->
+  <button onclick="app.openTransactionModal()" class="fixed bottom-20 md:bottom-8 right-6 z-40 w-14 h-14 rounded-2xl bg-m3-primary text-white shadow-xl hover:scale-105 active:scale-95 transition flex items-center justify-center text-xl font-bold">
+    <i class="fa-solid fa-plus"></i>
+  </button>
+
+  <!-- MOBILE BOTTOM NAVBAR -->
+  <nav class="fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-2 md:hidden">
+    <div class="flex justify-around items-center">
+      <button onclick="app.switchTab('overview')" id="nav-overview" class="flex flex-col items-center gap-1 text-m3-primary font-bold">
+        <i class="fa-solid fa-chart-pie text-lg"></i>
+        <span class="text-xs">Overview</span>
+      </button>
+      <button onclick="app.switchTab('history')" id="nav-history" class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400">
+        <i class="fa-solid fa-list text-lg"></i>
+        <span class="text-xs">History</span>
+      </button>
+      <button onclick="app.switchTab('categories')" id="nav-categories" class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400">
+        <i class="fa-solid fa-tags text-lg"></i>
+        <span class="text-xs">Categories</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MODAL 1: ADD / EDIT TRANSACTION -->
+  <div id="transactionModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+    <div class="bg-white dark:bg-slate-900 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="txModalTitle" class="text-lg font-bold">Add Transaction</h3>
+        <button onclick="app.closeTransactionModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="txForm" onsubmit="app.handleTxSubmit(event)" class="space-y-4">
+        <input type="hidden" id="txId">
+
+        <!-- Type Selector -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Transaction Type</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="txTypeExpenseBtn" onclick="app.setFormType('Expense')" class="py-2.5 rounded-xl font-bold text-sm border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300">Expense</button>
+            <button type="button" id="txTypeIncomeBtn" onclick="app.setFormType('Income')" class="py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Income</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Date -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Date</label>
+            <input type="date" id="txDate" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+          </div>
+          <!-- Amount -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Amount ($)</label>
+            <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+          </div>
+        </div>
+
+        <!-- Store / Payee -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Store / Payee</label>
+          <input type="text" id="txStore" required placeholder="e.g. Acme Corp, Supermarket, Client X" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+        </div>
+
+        <!-- Category Dropdown -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Category</label>
+          <select id="txCategory" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Description (Optional)</label>
+          <input type="text" id="txDescription" placeholder="Notes or details..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="app.closeTransactionModal()" class="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
+          <button type="submit" class="flex-1 py-3 rounded-xl bg-m3-primary text-white font-semibold text-sm hover:bg-opacity-90 shadow-md">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADD CATEGORY -->
+  <div id="categoryModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold">Add New Category</h3>
+        <button onclick="app.closeCategoryModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="catForm" onsubmit="app.handleCatSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Type</label>
+          <select id="catTypeSelect" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium">
+            <option value="Expense">Expense</option>
+            <option value="Income">Income</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Category Subtype Name</label>
+          <input type="text" id="catSubtypeInput" required placeholder="e.g. Freelance, Investment, Utilities" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="app.closeCategoryModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-sm">Cancel</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-m3-primary text-white font-semibold text-sm">Create Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: SUPABASE CONFIGURATION -->
+  <div id="configModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-database text-m3-primary text-xl"></i>
+          <h3 class="text-lg font-bold">Supabase Database Config</h3>
+        </div>
+        <button onclick="app.closeConfigModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+        Enter your Supabase Project URL and Public Anon Key below. They are saved in your browser's local storage and used to fetch & sync your live database tables.
+      </p>
+
+      <form id="configForm" onsubmit="app.handleConfigSave(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Supabase Project URL</label>
+          <input type="url" id="cfgUrl" placeholder="https://your-project-id.supabase.co" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-m3-primary">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Publishable / Anon API Key</label>
+          <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-m3-primary">
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Tx Table</label>
+            <input type="text" id="cfgTxTable" value="Transactions" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Cats Table</label>
+            <input type="text" id="cfgCatTable" value="Categories" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Types Table</label>
+            <input type="text" id="cfgTypeTable" value="CategoryType" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
+          </div>
+        </div>
+
+        <!-- Connection Action Buttons -->
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button type="button" onclick="app.testSupabaseConnection()" class="px-4 py-2 rounded-xl border border-m3-primary text-m3-primary font-semibold text-xs hover:bg-m3-primary/10 transition flex items-center gap-2">
+            <i class="fa-solid fa-plug"></i> Test Connection
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-m3-primary text-white font-semibold text-xs hover:bg-opacity-90 shadow-md flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Save & Connect
+          </button>
+          <button type="button" onclick="app.clearCredentials()" class="px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-semibold text-xs hover:bg-rose-50 transition ml-auto">
+            Clear / Demo Mode
+          </button>
+        </div>
+      </form>
+
+      <!-- Database Setup Helper Accordion -->
+      <div class="mt-6 border-t border-slate-200 dark:border-slate-800 pt-4">
+        <details class="group">
+          <summary class="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
+            <span><i class="fa-solid fa-code text-m3-primary mr-1"></i> View SQL Setup Script for Supabase</span>
+            <i class="fa-solid fa-chevron-down group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="mt-3 bg-slate-900 text-slate-200 p-3 rounded-xl text-[11px] font-mono overflow-x-auto relative">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('sqlSnippetText').innerText); app.showToast('SQL Copied to Clipboard!');" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px]">Copy</button>
+            <pre id="sqlSnippetText">-- 1. Create Tables
+CREATE TABLE IF NOT EXISTS public."CategoryType" (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  type text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public."Categories" (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  type bigint NOT NULL REFERENCES public."CategoryType"(id),
+  subtype varchar NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public."Transactions" (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  date date NOT NULL,
+  store varchar NOT NULL,
+  description varchar,
+  amount numeric NOT NULL,
+  category bigint NOT NULL REFERENCES public."Categories"(id)
+);
+
+-- 2. Grants & RLS Policies
+GRANT SELECT, INSERT, UPDATE, DELETE ON public."Transactions" TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public."Categories" TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public."CategoryType" TO anon, authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+ALTER TABLE public."Transactions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Categories" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."CategoryType" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow Transactions" ON public."Transactions" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow Categories" ON public."Categories" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);</pre>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- MAIN APPLICATION JAVASCRIPT MODULE -->
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    // =========================================================================
+    // 1. TOP-LEVEL CONFIGURATION BLOCK
+    // You can paste your Supabase URL & Key directly here, or set them via UI.
+    // =========================================================================
+    let SUPABASE_URL = localStorage.getItem('supabase_url') || '';
+    let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || '';
+    let TABLE_TRANSACTIONS = localStorage.getItem('table_tx') || 'Transactions';
+    let TABLE_CATEGORIES = localStorage.getItem('table_cats') || 'Categories';
+    let TABLE_CATEGORY_TYPE = localStorage.getItem('table_cat_types') || 'CategoryType';
+
+    let supabase = null;
+    let isConnected = false;
+
+    // App State
+    const state = {
+      currentTab: 'overview',
+      currentYearMonth: '2026-11', // default month
+      rawCategoryTypes: [],
+      rawCategories: [],
+      rawTransactions: [],
+      enrichedRows: [],
+      filteredHistoryRows: [],
+      activeFormType: 'Expense',
+      editingTxId: null,
+      incomeChart: null,
+      expenseChart: null
+    };
+
+    // Realistic Demo Data Fallback
+    const SAMPLE_TYPES = [
+      { id: 1, type: 'Expense' },
+      { id: 2, type: 'Income' }
+    ];
+
+    const SAMPLE_CATEGORIES = [
+      { id: 101, type: 2, subtype: 'Salary & Wage' },
+      { id: 102, type: 2, subtype: 'Freelance & Consulting' },
+      { id: 103, type: 2, subtype: 'Investment Income' },
+      { id: 104, type: 2, subtype: 'Bonus & Tips' },
+      { id: 201, type: 1, subtype: 'Housing & Rent' },
+      { id: 202, type: 1, subtype: 'Groceries' },
+      { id: 203, type: 1, subtype: 'Dining & Coffee' },
+      { id: 204, type: 1, subtype: 'Utilities & Internet' },
+      { id: 205, type: 1, subtype: 'Transportation' },
+      { id: 206, type: 1, subtype: 'Entertainment' },
+      { id: 207, type: 1, subtype: 'Shopping' }
+    ];
+
+    const SAMPLE_TRANSACTIONS = [
+      { id: 1, date: '2026-11-01', store: 'Tech Corp Direct', description: 'Bi-weekly Payroll', amount: 3850.00, category: 101 },
+      { id: 2, date: '2026-11-03', store: 'Metro Realty', description: 'Monthly Apartment Rent', amount: 1650.00, category: 201 },
+      { id: 3, date: '2026-11-05', store: 'Whole Foods Market', description: 'Weekly Produce & Pantry', amount: 184.50, category: 202 },
+      { id: 4, date: '2026-11-07', store: 'Upwork Client Global', description: 'UI/UX Design Contract', amount: 1200.00, category: 102 },
+      { id: 5, date: '2026-11-10', store: 'Power & Light Co.', description: 'Electricity Bill', amount: 112.40, category: 204 },
+      { id: 6, date: '2026-11-12', store: 'Blue Bottle Coffee', description: 'Team Coffee Catchup', amount: 18.25, category: 203 },
+      { id: 7, date: '2026-11-15', store: 'Tech Corp Direct', description: 'Bi-weekly Payroll', amount: 3850.00, category: 101 },
+      { id: 8, date: '2026-11-18', store: 'Trader Joe\'s', description: 'Mid-month Snacks', amount: 96.10, category: 202 },
+      { id: 9, date: '2026-11-20', store: 'Fidelity Investments', description: 'Quarterly Dividend payout', amount: 340.00, category: 103 },
+      { id: 10, date: '2026-11-22', store: 'Uber Ride', description: 'Airport Transfer', amount: 45.80, category: 205 },
+      { id: 11, date: '2026-11-23', store: 'Steam / PlayStation', description: 'Game Purchase', amount: 59.99, category: 206 }
+    ];
+
+    // =========================================================================
+    // 2. SUPABASE INITIALIZATION & DATA PIPELINE
+    // =========================================================================
+
+    function initSupabase() {
+      if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.startsWith('http')) {
+        try {
+          supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          return true;
+        } catch (e) {
+          console.error('Failed to init Supabase client:', e);
+        }
+      }
+      supabase = null;
+      return false;
+    }
+
+    /**
+     * loadExpenseAndIncomeData()
+     * Fetches CategoryType, Categories, and Transactions in parallel from Supabase,
+     * performs in-memory JS joins, normalizes string fields, and falls back gracefully.
+     */
+    async function loadExpenseAndIncomeData() {
+      if (!initSupabase()) {
+        console.warn('Supabase not configured. Using local preview data.');
+        return processLocalData();
+      }
+
+      try {
+        const [typesRes, catsRes, txRes] = await Promise.all([
+          supabase.from(TABLE_CATEGORY_TYPE).select('*'),
+          supabase.from(TABLE_CATEGORIES).select('*'),
+          supabase.from(TABLE_TRANSACTIONS).select('*').order('date', { ascending: false })
+        ]);
+
+        if (typesRes.error || catsRes.error || txRes.error) {
+          const err = typesRes.error || catsRes.error || txRes.error;
+          console.warn('Supabase fetch returned error:', err);
+          app.showToast(`Supabase Error: ${err.message}`, true);
+          return processLocalData();
+        }
+
+        state.rawCategoryTypes = typesRes.data || [];
+        state.rawCategories = catsRes.data || [];
+        state.rawTransactions = txRes.data || [];
+
+        // Build Join Lookup Maps
+        const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type || 'Expense']));
+        const catMap = new Map(state.rawCategories.map(c => [
+          Number(c.id),
+          {
+            subtype: c.subtype ? String(c.subtype).trim() : 'Uncategorized',
+            typeId: Number(c.type),
+            categoryType: typeMap.get(Number(c.type)) || 'Expense'
+          }
+        ]));
+
+        // Enrich Transactions
+        state.enrichedRows = state.rawTransactions.map(row => {
+          const catInfo = catMap.get(Number(row.category)) || { subtype: 'Other', categoryType: 'Expense' };
+          return {
+            id: row.id,
+            date: String(row.date || '').trim(),
+            store: String(row.store || '').trim(),
+            description: row.description ? String(row.description).trim() : '',
+            amount: Math.abs(Number(row.amount) || 0),
+            category: Number(row.category),
+            subtype: catInfo.subtype,
+            categoryType: catInfo.categoryType
+          };
+        });
+
+        isConnected = true;
+        updateStatusBadge(true, `Supabase Live (${state.enrichedRows.length} rows)`);
+        return state.enrichedRows;
+
+      } catch (err) {
+        console.error('Network or database exception:', err);
+        app.showToast('Failed to connect to Supabase. Showing Demo Data.', true);
+        return processLocalData();
+      }
+    }
+
+    function processLocalData() {
+      state.rawCategoryTypes = [...SAMPLE_TYPES];
+      state.rawCategories = [...SAMPLE_CATEGORIES];
+      state.rawTransactions = [...SAMPLE_TRANSACTIONS];
+
+      const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type]));
+      const catMap = new Map(state.rawCategories.map(c => [
+        Number(c.id),
+        { subtype: c.subtype, categoryType: typeMap.get(Number(c.type)) }
+      ]));
+
+      state.enrichedRows = state.rawTransactions.map(row => {
+        const catInfo = catMap.get(Number(row.category)) || { subtype: 'Other', categoryType: 'Expense' };
+        return {
+          ...row,
+          store: String(row.store).trim(),
+          description: String(row.description || '').trim(),
+          amount: Math.abs(Number(row.amount) || 0),
+          subtype: catInfo.subtype,
+          categoryType: catInfo.categoryType
+        };
+      });
+
+      isConnected = false;
+      updateStatusBadge(false, 'Local Preview Mode');
+      return state.enrichedRows;
+    }
+
+    /**
+     * summarizeMonth(rows, yearMonth)
+     * Filters rows by YYYY-MM, computes income, expenses, net balance, savings rate,
+     * and returns structured incomeByCategory / expenseByCategory maps.
+     */
+    function summarizeMonth(rows, yearMonth = '2026-11') {
+      const monthRows = rows.filter(r => String(r.date || '').startsWith(yearMonth));
+
+      const incomeByCategory = {};
+      const expenseByCategory = {};
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      let incomeCount = 0;
+      let expenseCount = 0;
+
+      for (const row of monthRows) {
+        const amt = row.amount;
+        const subtype = row.subtype || 'Uncategorized';
+        const isIncome = String(row.categoryType || '').toLowerCase().includes('income');
+
+        if (isIncome) {
+          totalIncome += amt;
+          incomeCount++;
+          incomeByCategory[subtype] = (incomeByCategory[subtype] || 0) + amt;
+        } else {
+          totalExpenses += amt;
+          expenseCount++;
+          expenseByCategory[subtype] = (expenseByCategory[subtype] || 0) + amt;
+        }
+      }
+
+      const netBalance = totalIncome - totalExpenses;
+      const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+
+      return {
+        yearMonth,
+        totalIncome,
+        totalExpenses,
+        netBalance,
+        savingsRate,
+        incomeCount,
+        expenseCount,
+        incomeByCategory,
+        expenseByCategory,
+        transactions: monthRows
+      };
+    }
+
+    /**
+     * createTransaction({ date, store, description, amount, categoryId })
+     */
+    async function createTransaction({ date, store, description, amount, categoryId }) {
+      const payload = {
+        date: String(date).trim(),
+        store: String(store).trim(),
+        description: description ? String(description).trim() : null,
+        amount: Math.abs(Number(amount)),
+        category: Number(categoryId)
+      };
+
+      if (isConnected && supabase) {
+        const { data, error } = await supabase
+          .from(TABLE_TRANSACTIONS)
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        app.showToast('Transaction inserted into Supabase!');
+      } else {
+        // Local preview push
+        const newId = Date.now();
+        state.rawTransactions.unshift({ id: newId, ...payload });
+        app.showToast('Transaction saved to Local Preview!');
+      }
+
+      await refreshData();
+    }
+
+    /**
+     * updateTransaction(id, payload)
+     */
+    async function updateTransaction(id, { date, store, description, amount, categoryId }) {
+      const payload = {
+        date: String(date).trim(),
+        store: String(store).trim(),
+        description: description ? String(description).trim() : null,
+        amount: Math.abs(Number(amount)),
+        category: Number(categoryId)
+      };
+
+      if (isConnected && supabase) {
+        const { error } = await supabase
+          .from(TABLE_TRANSACTIONS)
+          .update(payload)
+          .eq('id', id);
+
+        if (error) throw error;
+        app.showToast('Transaction updated in Supabase!');
+      } else {
+        const idx = state.rawTransactions.findIndex(t => t.id == id);
+        if (idx !== -1) {
+          state.rawTransactions[idx] = { ...state.rawTransactions[idx], ...payload };
+        }
+        app.showToast('Transaction updated locally!');
+      }
+
+      await refreshData();
+    }
+
+    /**
+     * deleteTransaction(id)
+     */
+    async function deleteTransaction(id) {
+      if (!confirm('Are you sure you want to delete this transaction?')) return;
+
+      if (isConnected && supabase) {
+        const { error } = await supabase
+          .from(TABLE_TRANSACTIONS)
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        app.showToast('Transaction deleted from Supabase.');
+      } else {
+        state.rawTransactions = state.rawTransactions.filter(t => t.id != id);
+        app.showToast('Transaction removed locally.');
+      }
+
+      await refreshData();
+    }
+
+    /**
+     * createCategory({ typeName, subtype })
+     */
+    async function createCategory(typeName, subtype) {
+      const typeObj = state.rawCategoryTypes.find(t => t.type.toLowerCase() === typeName.toLowerCase()) || state.rawCategoryTypes[0];
+      const typeId = typeObj ? Number(typeObj.id) : 1;
+
+      const payload = {
+        type: typeId,
+        subtype: String(subtype).trim()
+      };
+
+      if (isConnected && supabase) {
+        const { error } = await supabase
+          .from(TABLE_CATEGORIES)
+          .insert(payload);
+
+        if (error) throw error;
+        app.showToast(`New category '${subtype}' created in Supabase!`);
+      } else {
+        const newId = Date.now();
+        state.rawCategories.push({ id: newId, type: typeId, subtype: String(subtype).trim() });
+        app.showToast(`New category '${subtype}' added locally.`);
+      }
+
+      await refreshData();
+    }
+
+
+    // =========================================================================
+    // 3. UI RENDERING & CHARTS MANAGEMENT
+    // =========================================================================
+
+    async function refreshData() {
+      await loadExpenseAndIncomeData();
+      renderAll();
+    }
+
+    function renderAll() {
+      const summary = summarizeMonth(state.enrichedRows, state.currentYearMonth);
+      renderHeaderAndKPIs(summary);
+      renderIncomeBreakdown(summary);
+      renderExpenseBreakdown(summary);
+      renderRecentTransactions(summary.transactions);
+      renderHistoryTab();
+      renderCategoriesTab();
+    }
+
+    function renderHeaderAndKPIs(summary) {
+      // Month Title
+      const [yr, mo] = state.currentYearMonth.split('-');
+      const dateObj = new Date(parseInt(yr), parseInt(mo) - 1, 1);
+      const monthStr = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      document.getElementById('currentMonthDisplay').textContent = monthStr;
+
+      // KPIs
+      document.getElementById('kpiIncome').textContent = formatCurrency(summary.totalIncome);
+      document.getElementById('kpiIncomeCount').textContent = summary.incomeCount;
+
+      document.getElementById('kpiExpense').textContent = formatCurrency(summary.totalExpenses);
+      document.getElementById('kpiExpenseCount').textContent = summary.expenseCount;
+
+      const kpiNetEl = document.getElementById('kpiNet');
+      kpiNetEl.textContent = formatCurrency(summary.netBalance);
+      kpiNetEl.className = `text-2xl font-extrabold ${summary.netBalance >= 0 ? 'text-slate-900 dark:text-slate-100' : 'text-rose-600 dark:text-rose-400'}`;
+
+      document.getElementById('kpiSavingsRate').textContent = `${summary.savingsRate.toFixed(1)}%`;
+    }
+
+    // Render "Monthly Income by Category" Donut & Breakdown
+    function renderIncomeBreakdown(summary) {
+      const container = document.getElementById('incomeCategoryList');
+      const badge = document.getElementById('incomeCatTotalBadge');
+      badge.textContent = formatCurrency(summary.totalIncome);
+
+      const entries = Object.entries(summary.incomeByCategory);
+
+      if (entries.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-4">No income recorded for this month.</p>`;
+        renderDonut('incomeDonutChart', ['No Data'], [1], ['#E2E8F0'], 'incomeChart');
+        return;
+      }
+
+      const colors = ['#0F766E', '#14B8A6', '#2DD4BF', '#5EEAD4', '#99F6E4', '#CCFBF1'];
+      const labels = [];
+      const values = [];
+
+      let html = '';
+      entries.sort((a, b) => b[1] - a[1]).forEach(([subtype, amount], i) => {
+        labels.push(subtype);
+        values.push(amount);
+        const percent = summary.totalIncome > 0 ? ((amount / summary.totalIncome) * 100).toFixed(1) : 0;
+        const color = colors[i % colors.length];
+
+        html += `
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${color}"></span>
+              <span class="font-medium truncate text-slate-700 dark:text-slate-200">${escapeHtml(subtype)}</span>
+            </div>
+            <div class="text-right flex-shrink-0 font-semibold">
+              <span class="text-slate-900 dark:text-slate-100">${formatCurrency(amount)}</span>
+              <span class="text-[10px] text-slate-400 ml-1">(${percent}%)</span>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      renderDonut('incomeDonutChart', labels, values, colors, 'incomeChart');
+    }
+
+    // Render "Monthly Expenses by Category" Donut & Breakdown
+    function renderExpenseBreakdown(summary) {
+      const container = document.getElementById('expenseCategoryList');
+      const badge = document.getElementById('expenseCatTotalBadge');
+      badge.textContent = formatCurrency(summary.totalExpenses);
+
+      const entries = Object.entries(summary.expenseByCategory);
+
+      if (entries.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-4">No expenses recorded for this month.</p>`;
+        renderDonut('expenseDonutChart', ['No Data'], [1], ['#E2E8F0'], 'expenseChart');
+        return;
+      }
+
+      const colors = ['#E11D48', '#F43F5E', '#FB7185', '#FDA4AF', '#F472B6', '#C084FC', '#A855F7'];
+      const labels = [];
+      const values = [];
+
+      let html = '';
+      entries.sort((a, b) => b[1] - a[1]).forEach(([subtype, amount], i) => {
+        labels.push(subtype);
+        values.push(amount);
+        const percent = summary.totalExpenses > 0 ? ((amount / summary.totalExpenses) * 100).toFixed(1) : 0;
+        const color = colors[i % colors.length];
+
+        html += `
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${color}"></span>
+              <span class="font-medium truncate text-slate-700 dark:text-slate-200">${escapeHtml(subtype)}</span>
+            </div>
+            <div class="text-right flex-shrink-0 font-semibold">
+              <span class="text-slate-900 dark:text-slate-100">${formatCurrency(amount)}</span>
+              <span class="text-[10px] text-slate-400 ml-1">(${percent}%)</span>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      renderDonut('expenseDonutChart', labels, values, colors, 'expenseChart');
+    }
+
+    // Generic Chart.js Donut Helper
+    function renderDonut(canvasId, labels, data, colors, chartStateKey) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (state[chartStateKey]) {
+        state[chartStateKey].destroy();
+      }
+
+      state[chartStateKey] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.label}: $${context.raw.toLocaleString()}`;
+                }
+              }
+            }
+          },
+          cutout: '72%'
+        }
+      });
+    }
+
+    function renderRecentTransactions(monthTransactions) {
+      const container = document.getElementById('recentTransactionsList');
+      if (monthTransactions.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-6 text-center">No transactions found for this month.</p>`;
+        return;
+      }
+
+      const recent = monthTransactions.slice(0, 5);
+      container.innerHTML = recent.map(r => renderTransactionRowHtml(r)).join('');
+    }
+
+    function renderHistoryTab() {
+      // Populate Category Filter dropdown
+      const catSelect = document.getElementById('categoryFilter');
+      const currentCatVal = catSelect.value;
+      const categories = Array.from(new Set(state.enrichedRows.map(r => r.subtype))).sort();
+
+      catSelect.innerHTML = `<option value="ALL">All Categories</option>` +
+        categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      catSelect.value = currentCatVal || 'ALL';
+
+      filterHistory();
+    }
+
+    function filterHistory() {
+      const q = (document.getElementById('searchInput').value || '').toLowerCase();
+      const typeF = document.getElementById('typeFilter').value;
+      const catF = document.getElementById('categoryFilter').value;
+
+      state.filteredHistoryRows = state.enrichedRows.filter(r => {
+        const matchesQuery = !q ||
+          r.store.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q) ||
+          r.subtype.toLowerCase().includes(q);
+
+        const matchesType = typeF === 'ALL' || r.categoryType.toLowerCase() === typeF.toLowerCase();
+        const matchesCat = catF === 'ALL' || r.subtype === catF;
+        const matchesMonth = r.date.startsWith(state.currentYearMonth);
+
+        return matchesQuery && matchesType && matchesCat && matchesMonth;
+      });
+
+      const container = document.getElementById('fullHistoryList');
+      if (state.filteredHistoryRows.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-10 text-center">No transactions match your filters.</p>`;
+        return;
+      }
+
+      container.innerHTML = state.filteredHistoryRows.map(r => renderTransactionRowHtml(r, true)).join('');
+    }
+
+    function renderTransactionRowHtml(r, showActions = false) {
+      const isIncome = r.categoryType.toLowerCase().includes('income');
+      const badgeClass = isIncome ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+      const amountClass = isIncome ? 'text-teal-600 dark:text-teal-400 font-bold' : 'text-slate-900 dark:text-slate-100 font-bold';
+      const icon = isIncome ? 'fa-arrow-down' : 'fa-arrow-up';
+
+      return `
+        <div class="py-3 px-2 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition rounded-xl">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-2xl ${badgeClass} flex items-center justify-center text-xs flex-shrink-0">
+              <i class="fa-solid ${icon}"></i>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(r.store)}</p>
+              <div class="flex items-center gap-2 text-xs text-slate-400">
+                <span>${r.date}</span>
+                <span>•</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px]">${escapeHtml(r.subtype)}</span>
+                ${r.description ? `<span>• ${escapeHtml(r.description)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="${amountClass} text-sm">${isIncome ? '+' : '-'}${formatCurrency(r.amount)}</span>
+            ${showActions ? `
+              <div class="flex items-center gap-1">
+                <button onclick="app.editTransaction(${r.id})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-m3-primary hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="app.deleteTx(${r.id})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center justify-center text-xs"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCategoriesTab() {
+      const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type]));
+      const incomeList = document.getElementById('incomeCategoryManageList');
+      const expenseList = document.getElementById('expenseCategoryManageList');
+
+      const incomeCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === 'Income');
+      const expenseCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === 'Expense');
+
+      incomeList.innerHTML = incomeCats.map(c => `
+        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs font-semibold">
+          <span class="text-slate-800 dark:text-slate-200"><i class="fa-solid fa-tag text-teal-500 mr-2"></i>${escapeHtml(c.subtype)}</span>
+          <span class="text-[10px] text-slate-400">ID: ${c.id}</span>
+        </div>
+      `).join('');
+
+      expenseList.innerHTML = expenseCats.map(c => `
+        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs font-semibold">
+          <span class="text-slate-800 dark:text-slate-200"><i class="fa-solid fa-tag text-rose-500 mr-2"></i>${escapeHtml(c.subtype)}</span>
+          <span class="text-[10px] text-slate-400">ID: ${c.id}</span>
+        </div>
+      `).join('');
+    }
+
+    function updateStatusBadge(isLive, text) {
+      const pill = document.getElementById('statusPill');
+      const label = document.getElementById('statusText');
+      label.textContent = text;
+
+      if (isLive) {
+        pill.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer";
+      } else {
+        pill.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition cursor-pointer";
+      }
+    }
+
+
+    // =========================================================================
+    // 4. UI HANDLERS & MODAL CONTROL
+    // =========================================================================
+
+    window.app = {
+      // Month navigation
+      changeMonth(delta) {
+        const [yr, mo] = state.currentYearMonth.split('-');
+        let d = new Date(parseInt(yr), parseInt(mo) - 1 + delta, 1);
+        const newYr = d.getFullYear();
+        const newMo = String(d.getMonth() + 1).padStart(2, '0');
+        state.currentYearMonth = `${newYr}-${newMo}`;
+        renderAll();
+      },
+
+      // Tab Switcher
+      switchTab(tabId) {
+        state.currentTab = tabId;
+        ['overview', 'history', 'categories'].forEach(t => {
+          const viewEl = document.getElementById(`view-${t}`);
+          const tabBtn = document.getElementById(`tab-${t}`);
+          const navBtn = document.getElementById(`nav-${t}`);
+
+          if (t === tabId) {
+            viewEl.classList.remove('hidden');
+            tabBtn.className = "tab-btn px-4 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 bg-m3-primary text-white shadow-sm";
+            if (navBtn) navBtn.className = "flex flex-col items-center gap-1 text-m3-primary font-bold";
+          } else {
+            viewEl.classList.add('hidden');
+            tabBtn.className = "tab-btn px-4 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200";
+            if (navBtn) navBtn.className = "flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400";
+          }
+        });
+      },
+
+      // Transaction Form Modal
+      openTransactionModal(editingRow = null) {
+        const modal = document.getElementById('transactionModal');
+        const title = document.getElementById('txModalTitle');
+        const form = document.getElementById('txForm');
+
+        form.reset();
+        document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+
+        if (editingRow) {
+          state.editingTxId = editingRow.id;
+          title.textContent = 'Edit Transaction';
+          document.getElementById('txId').value = editingRow.id;
+          document.getElementById('txDate').value = editingRow.date;
+          document.getElementById('txStore').value = editingRow.store;
+          document.getElementById('txDescription').value = editingRow.description || '';
+          document.getElementById('txAmount').value = editingRow.amount;
+          this.setFormType(editingRow.categoryType);
+          document.getElementById('txCategory').value = editingRow.category;
+        } else {
+          state.editingTxId = null;
+          title.textContent = 'Add Transaction';
+          this.setFormType('Expense');
+        }
+
+        modal.classList.remove('hidden');
+      },
+
+      closeTransactionModal() {
+        document.getElementById('transactionModal').classList.add('hidden');
+      },
+
+      setFormType(type) {
+        state.activeFormType = type;
+        const expBtn = document.getElementById('txTypeExpenseBtn');
+        const incBtn = document.getElementById('txTypeIncomeBtn');
+        const catSelect = document.getElementById('txCategory');
+
+        if (type === 'Expense') {
+          expBtn.className = "py-2.5 rounded-xl font-bold text-sm border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300";
+          incBtn.className = "py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
+        } else {
+          incBtn.className = "py-2.5 rounded-xl font-bold text-sm border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300";
+          expBtn.className = "py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
+        }
+
+        // Filter Categories Dropdown based on Type
+        const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type]));
+        const validCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === type);
+
+        catSelect.innerHTML = validCats.map(c => `
+          <option value="${c.id}">${escapeHtml(c.subtype)}</option>
+        `).join('');
+      },
+
+      async handleTxSubmit(e) {
+        e.preventDefault();
+        const date = document.getElementById('txDate').value;
+        const store = document.getElementById('txStore').value;
+        const description = document.getElementById('txDescription').value;
+        const amount = document.getElementById('txAmount').value;
+        const categoryId = document.getElementById('txCategory').value;
+
+        try {
+          if (state.editingTxId) {
+            await updateTransaction(state.editingTxId, { date, store, description, amount, categoryId });
+          } else {
+            await createTransaction({ date, store, description, amount, categoryId });
+          }
+          this.closeTransactionModal();
+        } catch (err) {
+          app.showToast(`Error: ${err.message}`, true);
+        }
+      },
+
+      editTransaction(id) {
+        const row = state.enrichedRows.find(r => r.id == id);
+        if (row) this.openTransactionModal(row);
+      },
+
+      deleteTx(id) {
+        deleteTransaction(id);
+      },
+
+      // Category Modal
+      openCategoryModal() {
+        document.getElementById('categoryModal').classList.remove('hidden');
+      },
+
+      closeCategoryModal() {
+        document.getElementById('categoryModal').classList.add('hidden');
+      },
+
+      async handleCatSubmit(e) {
+        e.preventDefault();
+        const typeName = document.getElementById('catTypeSelect').value;
+        const subtype = document.getElementById('catSubtypeInput').value;
+
+        try {
+          await createCategory(typeName, subtype);
+          this.closeCategoryModal();
+        } catch (err) {
+          app.showToast(`Error: ${err.message}`, true);
+        }
+      },
+
+      // Config Modal
+      openConfigModal() {
+        document.getElementById('cfgUrl').value = SUPABASE_URL;
+        document.getElementById('cfgKey').value = SUPABASE_ANON_KEY;
+        document.getElementById('cfgTxTable').value = TABLE_TRANSACTIONS;
+        document.getElementById('cfgCatTable').value = TABLE_CATEGORIES;
+        document.getElementById('cfgTypeTable').value = TABLE_CATEGORY_TYPE;
+        document.getElementById('configModal').classList.remove('hidden');
+      },
+
+      closeConfigModal() {
+        document.getElementById('configModal').classList.add('hidden');
+      },
+
+      handleConfigSave(e) {
+        e.preventDefault();
+        SUPABASE_URL = document.getElementById('cfgUrl').value.trim();
+        SUPABASE_ANON_KEY = document.getElementById('cfgKey').value.trim();
+        TABLE_TRANSACTIONS = document.getElementById('cfgTxTable').value.trim() || 'Transactions';
+        TABLE_CATEGORIES = document.getElementById('cfgCatTable').value.trim() || 'Categories';
+        TABLE_CATEGORY_TYPE = document.getElementById('cfgTypeTable').value.trim() || 'CategoryType';
+
+        localStorage.setItem('supabase_url', SUPABASE_URL);
+        localStorage.setItem('supabase_anon_key', SUPABASE_ANON_KEY);
+        localStorage.setItem('table_tx', TABLE_TRANSACTIONS);
+        localStorage.setItem('table_cats', TABLE_CATEGORIES);
+        localStorage.setItem('table_cat_types', TABLE_CATEGORY_TYPE);
+
+        this.closeConfigModal();
+        refreshData();
+      },
+
+      async testSupabaseConnection() {
+        const testUrl = document.getElementById('cfgUrl').value.trim();
+        const testKey = document.getElementById('cfgKey').value.trim();
+
+        if (!testUrl || !testKey) {
+          alert('Please enter both Supabase URL and Anon Key to test.');
+          return;
+        }
+
+        try {
+          const testClient = createClient(testUrl, testKey);
+          const { data, error } = await testClient.from(document.getElementById('cfgTxTable').value.trim() || 'Transactions').select('id').limit(1);
+
+          if (error) throw error;
+          alert('Connection Successful! Supabase is reachable and read permissions are granted.');
+        } catch (err) {
+          alert(`Connection Test Failed:\n${err.message}`);
+        }
+      },
+
+      clearCredentials() {
+        localStorage.removeItem('supabase_url');
+        localStorage.removeItem('supabase_anon_key');
+        SUPABASE_URL = '';
+        SUPABASE_ANON_KEY = '';
+        this.closeConfigModal();
+        refreshData();
+        this.showToast('Cleared API keys. Reverted to Demo Mode.');
+      },
+
+      filterHistory() {
+        filterHistory();
+      },
+
+      // Toast System
+      showToast(msg, isError = false) {
+        const toast = document.getElementById('toastContainer');
+        const content = document.getElementById('toastContent');
+        document.getElementById('toastMessage').textContent = msg;
+
+        if (isError) {
+          content.className = "bg-rose-900 text-rose-100 px-4 py-3 rounded-2xl shadow-xl text-sm flex items-center justify-between pointer-events-auto border border-rose-700";
+        } else {
+          content.className = "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-3 rounded-2xl shadow-xl text-sm flex items-center justify-between pointer-events-auto";
+        }
+
+        toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+        toast.classList.add('opacity-100', 'translate-y-0');
+
+        setTimeout(() => {
+          this.hideToast();
+        }, 4000);
+      },
+
+      hideToast() {
+        const toast = document.getElementById('toastContainer');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-[-10px]');
+      },
+
+      toggleDarkMode() {
+        document.documentElement.classList.toggle('dark');
+      }
+    };
+
+    // Helper Utilities
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+
+    // Initialize App on DOM Ready
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshData();
+    });
+  </script>
+</body>
+</html>
