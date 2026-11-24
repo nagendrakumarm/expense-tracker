@@ -49,7 +49,6 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -61,7 +60,6 @@
     .m3-card:hover {
       transform: translateY(-1px);
     }
-    /* Custom scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -77,6 +75,25 @@
 </head>
 
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-full flex flex-col pb-20 md:pb-6">
+
+  <!-- Login Modal -->
+  <div id="loginModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: #ffffff; color: #111827; padding: 24px; border-radius: 16px; width: 100%; max-width: 360px; box-sizing: border-box;">
+      <h2 style="margin: 0 0 12px; font-weight: 700; font-size: 1.25rem;">Sign In</h2>
+      <form id="loginForm">
+        <label style="display: block; margin-bottom: 8px; font-size: 0.875rem;">
+          Username
+          <input id="loginUsername" type="text" autocomplete="username" required style="display: block; width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;" />
+        </label>
+        <label style="display: block; margin-bottom: 12px; font-size: 0.875rem;">
+          Password
+          <input id="loginPassword" type="password" autocomplete="current-password" required style="display: block; width: 100%; margin-top: 4px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;" />
+        </label>
+        <p id="loginError" style="color: #b91c1c; font-size: 0.875rem; min-height: 1.2em; margin: 0 0 12px;"></p>
+        <button id="loginSubmitBtn" type="submit" style="width: 100%; padding: 10px; background: #6750A4; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Sign In</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Top Navigation Header -->
   <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
@@ -95,7 +112,12 @@
         <!-- Status Pill -->
         <button id="statusPill" onclick="app.openConfigModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition">
           <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-          <span id="statusText">Demo Mode</span>
+          <span id="statusText">Local Preview Mode</span>
+        </button>
+
+        <!-- Logout Button -->
+        <button id="logoutBtn" type="button" style="display: none;" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          Log out
         </button>
 
         <!-- Dark Mode Toggle -->
@@ -104,8 +126,8 @@
           <i class="fa-solid fa-sun hidden dark:block"></i>
         </button>
 
-        <!-- Supabase Settings Button -->
-        <button onclick="app.openConfigModal()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Supabase Database Settings">
+        <!-- Backend / Info Button -->
+        <button onclick="app.openConfigModal()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Connection Info">
           <i class="fa-solid fa-gear"></i>
         </button>
       </div>
@@ -152,7 +174,7 @@
 
     <!-- TAB 1: OVERVIEW -->
     <div id="view-overview" class="space-y-6">
-      
+
       <!-- KPI Cards Grid -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <!-- Income Card -->
@@ -223,9 +245,7 @@
             <div class="w-44 h-44 relative flex-shrink-0">
               <canvas id="incomeDonutChart"></canvas>
             </div>
-            <div id="incomeCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1">
-              <!-- Dynamically populated -->
-            </div>
+            <div id="incomeCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1"></div>
           </div>
         </div>
 
@@ -245,9 +265,7 @@
             <div class="w-44 h-44 relative flex-shrink-0">
               <canvas id="expenseDonutChart"></canvas>
             </div>
-            <div id="expenseCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1">
-              <!-- Dynamically populated -->
-            </div>
+            <div id="expenseCategoryList" class="w-full flex-1 space-y-2.5 max-h-48 overflow-y-auto pr-1"></div>
           </div>
         </div>
 
@@ -259,16 +277,13 @@
           <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Month Activity Preview</h3>
           <button onclick="app.switchTab('history')" class="text-xs font-semibold text-m3-primary hover:underline">View All</button>
         </div>
-        <div id="recentTransactionsList" class="divide-y divide-slate-100 dark:divide-slate-800">
-          <!-- Dynamically populated -->
-        </div>
+        <div id="recentTransactionsList" class="divide-y divide-slate-100 dark:divide-slate-800"></div>
       </div>
 
     </div>
 
     <!-- TAB 2: HISTORY -->
     <div id="view-history" class="space-y-4 hidden">
-      <!-- Search & Filter Controls -->
       <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
         <div class="flex flex-col sm:flex-row gap-3">
           <div class="relative flex-1">
@@ -288,11 +303,8 @@
         </div>
       </div>
 
-      <!-- History Transaction List -->
       <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div id="fullHistoryList" class="divide-y divide-slate-100 dark:divide-slate-800">
-          <!-- Dynamically populated -->
-        </div>
+        <div id="fullHistoryList" class="divide-y divide-slate-100 dark:divide-slate-800"></div>
       </div>
     </div>
 
@@ -309,24 +321,18 @@
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Income Categories -->
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
           <h4 class="text-base font-bold text-teal-700 dark:text-teal-400 mb-4 flex items-center gap-2">
             <i class="fa-solid fa-circle-down text-teal-500"></i> Income Subtypes
           </h4>
-          <div id="incomeCategoryManageList" class="space-y-2">
-            <!-- Dynamically populated -->
-          </div>
+          <div id="incomeCategoryManageList" class="space-y-2"></div>
         </div>
 
-        <!-- Expense Categories -->
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
           <h4 class="text-base font-bold text-rose-700 dark:text-rose-400 mb-4 flex items-center gap-2">
             <i class="fa-solid fa-circle-up text-rose-500"></i> Expense Subtypes
           </h4>
-          <div id="expenseCategoryManageList" class="space-y-2">
-            <!-- Dynamically populated -->
-          </div>
+          <div id="expenseCategoryManageList" class="space-y-2"></div>
         </div>
       </div>
     </div>
@@ -367,7 +373,6 @@
       <form id="txForm" onsubmit="app.handleTxSubmit(event)" class="space-y-4">
         <input type="hidden" id="txId">
 
-        <!-- Type Selector -->
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Transaction Type</label>
           <div class="grid grid-cols-2 gap-2">
@@ -377,39 +382,31 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <!-- Date -->
           <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Date</label>
             <input type="date" id="txDate" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
           </div>
-          <!-- Amount -->
           <div>
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Amount ($)</label>
             <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
           </div>
         </div>
 
-        <!-- Store / Payee -->
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Store / Payee</label>
           <input type="text" id="txStore" required placeholder="e.g. Acme Corp, Supermarket, Client X" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
         </div>
 
-        <!-- Category Dropdown -->
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Category</label>
-          <select id="txCategory" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
-            <!-- Dynamically populated -->
-          </select>
+          <select id="txCategory" required class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary"></select>
         </div>
 
-        <!-- Description -->
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Description (Optional)</label>
           <input type="text" id="txDescription" placeholder="Notes or details..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-m3-primary">
         </div>
 
-        <!-- Buttons -->
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="app.closeTransactionModal()" class="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</button>
           <button type="submit" class="flex-1 py-3 rounded-xl bg-m3-primary text-white font-semibold text-sm hover:bg-opacity-90 shadow-md">Save Transaction</button>
@@ -446,133 +443,31 @@
     </div>
   </div>
 
-  <!-- MODAL 3: SUPABASE CONFIGURATION -->
+  <!-- MODAL 3: BACKEND CONNECTION INFO -->
   <div id="configModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
-          <i class="fa-solid fa-database text-m3-primary text-xl"></i>
-          <h3 class="text-lg font-bold">Supabase Database Config</h3>
+          <i class="fa-solid fa-shield-halved text-m3-primary text-xl"></i>
+          <h3 class="text-lg font-bold">Backend Proxy Status</h3>
         </div>
         <button onclick="app.closeConfigModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center hover:bg-slate-200"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
-        Enter your Supabase Project URL and Public Anon Key below. They are saved in your browser's local storage and used to fetch & sync your live database tables.
+      <p class="text-xs text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
+        Supabase URL and secret keys stay on your FastAPI server (<code>.env</code>) and are never exposed in the browser. Sign in with your login modal to load and save live Supabase data through <code>auth.js</code>.
       </p>
 
-      <form id="configForm" onsubmit="app.handleConfigSave(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Supabase Project URL</label>
-          <input type="url" id="cfgUrl" placeholder="https://your-project-id.supabase.co" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-m3-primary">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Publishable / Anon API Key</label>
-          <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-m3-primary">
-        </div>
-
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Tx Table</label>
-            <input type="text" id="cfgTxTable" value="Transactions" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
-          </div>
-          <div>
-            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Cats Table</label>
-            <input type="text" id="cfgCatTable" value="Categories" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
-          </div>
-          <div>
-            <label class="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Types Table</label>
-            <input type="text" id="cfgTypeTable" value="CategoryType" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs font-mono">
-          </div>
-        </div>
-
-        <!-- Connection Action Buttons -->
-        <div class="flex flex-wrap gap-2 pt-2">
-          <button type="button" onclick="app.testSupabaseConnection()" class="px-4 py-2 rounded-xl border border-m3-primary text-m3-primary font-semibold text-xs hover:bg-m3-primary/10 transition flex items-center gap-2">
-            <i class="fa-solid fa-plug"></i> Test Connection
-          </button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-m3-primary text-white font-semibold text-xs hover:bg-opacity-90 shadow-md flex items-center gap-2">
-            <i class="fa-solid fa-floppy-disk"></i> Save & Connect
-          </button>
-          <button type="button" onclick="app.clearCredentials()" class="px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 font-semibold text-xs hover:bg-rose-50 transition ml-auto">
-            Clear / Demo Mode
-          </button>
-        </div>
-      </form>
-
-      <!-- Database Setup Helper Accordion -->
-      <div class="mt-6 border-t border-slate-200 dark:border-slate-800 pt-4">
-        <details class="group">
-          <summary class="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
-            <span><i class="fa-solid fa-code text-m3-primary mr-1"></i> View SQL Setup Script for Supabase</span>
-            <i class="fa-solid fa-chevron-down group-open:rotate-180 transition-transform"></i>
-          </summary>
-          <div class="mt-3 bg-slate-900 text-slate-200 p-3 rounded-xl text-[11px] font-mono overflow-x-auto relative">
-            <button onclick="navigator.clipboard.writeText(document.getElementById('sqlSnippetText').innerText); app.showToast('SQL Copied to Clipboard!');" class="absolute top-2 right-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px]">Copy</button>
-            <pre id="sqlSnippetText">-- 1. Create Tables
-CREATE TABLE IF NOT EXISTS public."CategoryType" (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  type text NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public."Categories" (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  type bigint NOT NULL REFERENCES public."CategoryType"(id),
-  subtype varchar NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public."Transactions" (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  date date NOT NULL,
-  store varchar NOT NULL,
-  description varchar,
-  amount numeric NOT NULL,
-  category bigint NOT NULL REFERENCES public."Categories"(id)
-);
-
--- 2. Grants & RLS Policies
-GRANT SELECT, INSERT, UPDATE, DELETE ON public."Transactions" TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public."Categories" TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public."CategoryType" TO anon, authenticated;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
-
-ALTER TABLE public."Transactions" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."Categories" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public."CategoryType" ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Allow Transactions" ON public."Transactions" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow Categories" ON public."Categories" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);</pre>
-          </div>
-        </details>
+      <div class="flex justify-end pt-2">
+        <button type="button" onclick="app.closeConfigModal()" class="px-4 py-2 rounded-xl bg-m3-primary text-white font-semibold text-xs">Close</button>
       </div>
-
     </div>
   </div>
 
-
-  <!-- MAIN APPLICATION JAVASCRIPT MODULE -->
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-    // =========================================================================
-    // 1. TOP-LEVEL CONFIGURATION BLOCK
-    // You can paste your Supabase URL & Key directly here, or set them via UI.
-    // =========================================================================
-    let SUPABASE_URL = localStorage.getItem('supabase_url') || '';
-    let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || '';
-    let TABLE_TRANSACTIONS = localStorage.getItem('table_tx') || 'Transactions';
-    let TABLE_CATEGORIES = localStorage.getItem('table_cats') || 'Categories';
-    let TABLE_CATEGORY_TYPE = localStorage.getItem('table_cat_types') || 'CategoryType';
-
-    let supabase = null;
-    let isConnected = false;
-
-    // App State
     const state = {
       currentTab: 'overview',
-      currentYearMonth: '2026-11', // default month
+      currentYearMonth: '2026-11',
       rawCategoryTypes: [],
       rawCategories: [],
       rawTransactions: [],
@@ -581,10 +476,10 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       activeFormType: 'Expense',
       editingTxId: null,
       incomeChart: null,
-      expenseChart: null
+      expenseChart: null,
+      isApiLive: false
     };
 
-    // Realistic Demo Data Fallback
     const SAMPLE_TYPES = [
       { id: 1, type: 'Expense' },
       { id: 2, type: 'Income' }
@@ -594,114 +489,21 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       { id: 101, type: 2, subtype: 'Salary & Wage' },
       { id: 102, type: 2, subtype: 'Freelance & Consulting' },
       { id: 103, type: 2, subtype: 'Investment Income' },
-      { id: 104, type: 2, subtype: 'Bonus & Tips' },
       { id: 201, type: 1, subtype: 'Housing & Rent' },
       { id: 202, type: 1, subtype: 'Groceries' },
       { id: 203, type: 1, subtype: 'Dining & Coffee' },
-      { id: 204, type: 1, subtype: 'Utilities & Internet' },
-      { id: 205, type: 1, subtype: 'Transportation' },
-      { id: 206, type: 1, subtype: 'Entertainment' },
-      { id: 207, type: 1, subtype: 'Shopping' }
+      { id: 204, type: 1, subtype: 'Utilities & Internet' }
     ];
 
     const SAMPLE_TRANSACTIONS = [
       { id: 1, date: '2026-11-01', store: 'Tech Corp Direct', description: 'Bi-weekly Payroll', amount: 3850.00, category: 101 },
       { id: 2, date: '2026-11-03', store: 'Metro Realty', description: 'Monthly Apartment Rent', amount: 1650.00, category: 201 },
       { id: 3, date: '2026-11-05', store: 'Whole Foods Market', description: 'Weekly Produce & Pantry', amount: 184.50, category: 202 },
-      { id: 4, date: '2026-11-07', store: 'Upwork Client Global', description: 'UI/UX Design Contract', amount: 1200.00, category: 102 },
-      { id: 5, date: '2026-11-10', store: 'Power & Light Co.', description: 'Electricity Bill', amount: 112.40, category: 204 },
-      { id: 6, date: '2026-11-12', store: 'Blue Bottle Coffee', description: 'Team Coffee Catchup', amount: 18.25, category: 203 },
-      { id: 7, date: '2026-11-15', store: 'Tech Corp Direct', description: 'Bi-weekly Payroll', amount: 3850.00, category: 101 },
-      { id: 8, date: '2026-11-18', store: 'Trader Joe\'s', description: 'Mid-month Snacks', amount: 96.10, category: 202 },
-      { id: 9, date: '2026-11-20', store: 'Fidelity Investments', description: 'Quarterly Dividend payout', amount: 340.00, category: 103 },
-      { id: 10, date: '2026-11-22', store: 'Uber Ride', description: 'Airport Transfer', amount: 45.80, category: 205 },
-      { id: 11, date: '2026-11-23', store: 'Steam / PlayStation', description: 'Game Purchase', amount: 59.99, category: 206 }
+      { id: 4, date: '2026-11-12', store: 'Blue Bottle Coffee', description: 'Coffee', amount: 18.25, category: 203 }
     ];
 
-    // =========================================================================
-    // 2. SUPABASE INITIALIZATION & DATA PIPELINE
-    // =========================================================================
-
-    function initSupabase() {
-      if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.startsWith('http')) {
-        try {
-          supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          return true;
-        } catch (e) {
-          console.error('Failed to init Supabase client:', e);
-        }
-      }
-      supabase = null;
-      return false;
-    }
-
-    /**
-     * loadExpenseAndIncomeData()
-     * Fetches CategoryType, Categories, and Transactions in parallel from Supabase,
-     * performs in-memory JS joins, normalizes string fields, and falls back gracefully.
-     */
-    async function loadExpenseAndIncomeData() {
-      if (!initSupabase()) {
-        console.warn('Supabase not configured. Using local preview data.');
-        return processLocalData();
-      }
-
-      try {
-        const [typesRes, catsRes, txRes] = await Promise.all([
-          supabase.from(TABLE_CATEGORY_TYPE).select('*'),
-          supabase.from(TABLE_CATEGORIES).select('*'),
-          supabase.from(TABLE_TRANSACTIONS).select('*').order('date', { ascending: false })
-        ]);
-
-        if (typesRes.error || catsRes.error || txRes.error) {
-          const err = typesRes.error || catsRes.error || txRes.error;
-          console.warn('Supabase fetch returned error:', err);
-          app.showToast(`Supabase Error: ${err.message}`, true);
-          return processLocalData();
-        }
-
-        state.rawCategoryTypes = typesRes.data || [];
-        state.rawCategories = catsRes.data || [];
-        state.rawTransactions = txRes.data || [];
-
-        // Build Join Lookup Maps
-        const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type || 'Expense']));
-        const catMap = new Map(state.rawCategories.map(c => [
-          Number(c.id),
-          {
-            subtype: c.subtype ? String(c.subtype).trim() : 'Uncategorized',
-            typeId: Number(c.type),
-            categoryType: typeMap.get(Number(c.type)) || 'Expense'
-          }
-        ]));
-
-        // Enrich Transactions
-        state.enrichedRows = state.rawTransactions.map(row => {
-          const catInfo = catMap.get(Number(row.category)) || { subtype: 'Other', categoryType: 'Expense' };
-          return {
-            id: row.id,
-            date: String(row.date || '').trim(),
-            store: String(row.store || '').trim(),
-            description: row.description ? String(row.description).trim() : '',
-            amount: Math.abs(Number(row.amount) || 0),
-            category: Number(row.category),
-            subtype: catInfo.subtype,
-            categoryType: catInfo.categoryType
-          };
-        });
-
-        isConnected = true;
-        updateStatusBadge(true, `Supabase Live (${state.enrichedRows.length} rows)`);
-        return state.enrichedRows;
-
-      } catch (err) {
-        console.error('Network or database exception:', err);
-        app.showToast('Failed to connect to Supabase. Showing Demo Data.', true);
-        return processLocalData();
-      }
-    }
-
     function processLocalData() {
+      state.isApiLive = false;
       state.rawCategoryTypes = [...SAMPLE_TYPES];
       state.rawCategories = [...SAMPLE_CATEGORIES];
       state.rawTransactions = [...SAMPLE_TRANSACTIONS];
@@ -716,24 +518,18 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
         const catInfo = catMap.get(Number(row.category)) || { subtype: 'Other', categoryType: 'Expense' };
         return {
           ...row,
-          store: String(row.store).trim(),
-          description: String(row.description || '').trim(),
+          store: String(row.store || '').trim(),
+          description: row.description ? String(row.description).trim() : '',
           amount: Math.abs(Number(row.amount) || 0),
           subtype: catInfo.subtype,
           categoryType: catInfo.categoryType
         };
       });
 
-      isConnected = false;
       updateStatusBadge(false, 'Local Preview Mode');
-      return state.enrichedRows;
+      renderAll();
     }
 
-    /**
-     * summarizeMonth(rows, yearMonth)
-     * Filters rows by YYYY-MM, computes income, expenses, net balance, savings rate,
-     * and returns structured incomeByCategory / expenseByCategory maps.
-     */
     function summarizeMonth(rows, yearMonth = '2026-11') {
       const monthRows = rows.filter(r => String(r.date || '').startsWith(yearMonth));
 
@@ -745,8 +541,8 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       let expenseCount = 0;
 
       for (const row of monthRows) {
-        const amt = row.amount;
-        const subtype = row.subtype || 'Uncategorized';
+        const amt = Math.abs(Number(row.amount) || 0);
+        const subtype = String(row.subtype || 'Uncategorized').trim();
         const isIncome = String(row.categoryType || '').toLowerCase().includes('income');
 
         if (isIncome) {
@@ -777,128 +573,6 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       };
     }
 
-    /**
-     * createTransaction({ date, store, description, amount, categoryId })
-     */
-    async function createTransaction({ date, store, description, amount, categoryId }) {
-      const payload = {
-        date: String(date).trim(),
-        store: String(store).trim(),
-        description: description ? String(description).trim() : null,
-        amount: Math.abs(Number(amount)),
-        category: Number(categoryId)
-      };
-
-      if (isConnected && supabase) {
-        const { data, error } = await supabase
-          .from(TABLE_TRANSACTIONS)
-          .insert(payload)
-          .select()
-          .single();
-
-        if (error) throw error;
-        app.showToast('Transaction inserted into Supabase!');
-      } else {
-        // Local preview push
-        const newId = Date.now();
-        state.rawTransactions.unshift({ id: newId, ...payload });
-        app.showToast('Transaction saved to Local Preview!');
-      }
-
-      await refreshData();
-    }
-
-    /**
-     * updateTransaction(id, payload)
-     */
-    async function updateTransaction(id, { date, store, description, amount, categoryId }) {
-      const payload = {
-        date: String(date).trim(),
-        store: String(store).trim(),
-        description: description ? String(description).trim() : null,
-        amount: Math.abs(Number(amount)),
-        category: Number(categoryId)
-      };
-
-      if (isConnected && supabase) {
-        const { error } = await supabase
-          .from(TABLE_TRANSACTIONS)
-          .update(payload)
-          .eq('id', id);
-
-        if (error) throw error;
-        app.showToast('Transaction updated in Supabase!');
-      } else {
-        const idx = state.rawTransactions.findIndex(t => t.id == id);
-        if (idx !== -1) {
-          state.rawTransactions[idx] = { ...state.rawTransactions[idx], ...payload };
-        }
-        app.showToast('Transaction updated locally!');
-      }
-
-      await refreshData();
-    }
-
-    /**
-     * deleteTransaction(id)
-     */
-    async function deleteTransaction(id) {
-      if (!confirm('Are you sure you want to delete this transaction?')) return;
-
-      if (isConnected && supabase) {
-        const { error } = await supabase
-          .from(TABLE_TRANSACTIONS)
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-        app.showToast('Transaction deleted from Supabase.');
-      } else {
-        state.rawTransactions = state.rawTransactions.filter(t => t.id != id);
-        app.showToast('Transaction removed locally.');
-      }
-
-      await refreshData();
-    }
-
-    /**
-     * createCategory({ typeName, subtype })
-     */
-    async function createCategory(typeName, subtype) {
-      const typeObj = state.rawCategoryTypes.find(t => t.type.toLowerCase() === typeName.toLowerCase()) || state.rawCategoryTypes[0];
-      const typeId = typeObj ? Number(typeObj.id) : 1;
-
-      const payload = {
-        type: typeId,
-        subtype: String(subtype).trim()
-      };
-
-      if (isConnected && supabase) {
-        const { error } = await supabase
-          .from(TABLE_CATEGORIES)
-          .insert(payload);
-
-        if (error) throw error;
-        app.showToast(`New category '${subtype}' created in Supabase!`);
-      } else {
-        const newId = Date.now();
-        state.rawCategories.push({ id: newId, type: typeId, subtype: String(subtype).trim() });
-        app.showToast(`New category '${subtype}' added locally.`);
-      }
-
-      await refreshData();
-    }
-
-
-    // =========================================================================
-    // 3. UI RENDERING & CHARTS MANAGEMENT
-    // =========================================================================
-
-    async function refreshData() {
-      await loadExpenseAndIncomeData();
-      renderAll();
-    }
-
     function renderAll() {
       const summary = summarizeMonth(state.enrichedRows, state.currentYearMonth);
       renderHeaderAndKPIs(summary);
@@ -910,13 +584,11 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
     }
 
     function renderHeaderAndKPIs(summary) {
-      // Month Title
       const [yr, mo] = state.currentYearMonth.split('-');
-      const dateObj = new Date(parseInt(yr), parseInt(mo) - 1, 1);
+      const dateObj = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1, 1);
       const monthStr = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       document.getElementById('currentMonthDisplay').textContent = monthStr;
 
-      // KPIs
       document.getElementById('kpiIncome').textContent = formatCurrency(summary.totalIncome);
       document.getElementById('kpiIncomeCount').textContent = summary.incomeCount;
 
@@ -930,13 +602,12 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       document.getElementById('kpiSavingsRate').textContent = `${summary.savingsRate.toFixed(1)}%`;
     }
 
-    // Render "Monthly Income by Category" Donut & Breakdown
     function renderIncomeBreakdown(summary) {
       const container = document.getElementById('incomeCategoryList');
       const badge = document.getElementById('incomeCatTotalBadge');
       badge.textContent = formatCurrency(summary.totalIncome);
 
-      const entries = Object.entries(summary.incomeByCategory);
+      const entries = Object.entries(summary.incomeByCategory || {});
 
       if (entries.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 italic py-4">No income recorded for this month.</p>`;
@@ -973,13 +644,12 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       renderDonut('incomeDonutChart', labels, values, colors, 'incomeChart');
     }
 
-    // Render "Monthly Expenses by Category" Donut & Breakdown
     function renderExpenseBreakdown(summary) {
       const container = document.getElementById('expenseCategoryList');
       const badge = document.getElementById('expenseCatTotalBadge');
       badge.textContent = formatCurrency(summary.totalExpenses);
 
-      const entries = Object.entries(summary.expenseByCategory);
+      const entries = Object.entries(summary.expenseByCategory || {});
 
       if (entries.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 italic py-4">No expenses recorded for this month.</p>`;
@@ -1016,7 +686,6 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       renderDonut('expenseDonutChart', labels, values, colors, 'expenseChart');
     }
 
-    // Generic Chart.js Donut Helper
     function renderDonut(canvasId, labels, data, colors, chartStateKey) {
       const ctx = document.getElementById(canvasId).getContext('2d');
       if (state[chartStateKey]) {
@@ -1042,7 +711,7 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return ` ${context.label}: $${context.raw.toLocaleString()}`;
+                  return ` ${context.label}: $${Number(context.raw).toLocaleString()}`;
                 }
               }
             }
@@ -1054,17 +723,15 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
 
     function renderRecentTransactions(monthTransactions) {
       const container = document.getElementById('recentTransactionsList');
-      if (monthTransactions.length === 0) {
+      if (!monthTransactions || monthTransactions.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 italic py-6 text-center">No transactions found for this month.</p>`;
         return;
       }
 
-      const recent = monthTransactions.slice(0, 5);
-      container.innerHTML = recent.map(r => renderTransactionRowHtml(r)).join('');
+      container.innerHTML = monthTransactions.slice(0, 5).map(r => renderTransactionRowHtml(r)).join('');
     }
 
     function renderHistoryTab() {
-      // Populate Category Filter dropdown
       const catSelect = document.getElementById('categoryFilter');
       const currentCatVal = catSelect.value;
       const categories = Array.from(new Set(state.enrichedRows.map(r => r.subtype))).sort();
@@ -1089,7 +756,7 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
 
         const matchesType = typeF === 'ALL' || r.categoryType.toLowerCase() === typeF.toLowerCase();
         const matchesCat = catF === 'ALL' || r.subtype === catF;
-        const matchesMonth = r.date.startsWith(state.currentYearMonth);
+        const matchesMonth = String(r.date || '').startsWith(state.currentYearMonth);
 
         return matchesQuery && matchesType && matchesCat && matchesMonth;
       });
@@ -1100,11 +767,11 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
         return;
       }
 
-      container.innerHTML = state.filteredHistoryRows.map(r => renderTransactionRowHtml(r, true)).join('');
+      container.innerHTML = state.filteredHistoryRows.map(r => renderTransactionRowHtml(r, false)).join('');
     }
 
-    function renderTransactionRowHtml(r, showActions = false) {
-      const isIncome = r.categoryType.toLowerCase().includes('income');
+    function renderTransactionRowHtml(r) {
+      const isIncome = String(r.categoryType || '').toLowerCase().includes('income');
       const badgeClass = isIncome ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
       const amountClass = isIncome ? 'text-teal-600 dark:text-teal-400 font-bold' : 'text-slate-900 dark:text-slate-100 font-bold';
       const icon = isIncome ? 'fa-arrow-down' : 'fa-arrow-up';
@@ -1118,22 +785,14 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
             <div>
               <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">${escapeHtml(r.store)}</p>
               <div class="flex items-center gap-2 text-xs text-slate-400">
-                <span>${r.date}</span>
+                <span>${escapeHtml(r.date)}</span>
                 <span>•</span>
                 <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px]">${escapeHtml(r.subtype)}</span>
                 ${r.description ? `<span>• ${escapeHtml(r.description)}</span>` : ''}
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <span class="${amountClass} text-sm">${isIncome ? '+' : '-'}${formatCurrency(r.amount)}</span>
-            ${showActions ? `
-              <div class="flex items-center gap-1">
-                <button onclick="app.editTransaction(${r.id})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-m3-primary hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-xs"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="app.deleteTx(${r.id})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 flex items-center justify-center text-xs"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            ` : ''}
-          </div>
+          <span class="${amountClass} text-sm">${isIncome ? '+' : '-'}${formatCurrency(r.amount)}</span>
         </div>
       `;
     }
@@ -1143,8 +802,8 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       const incomeList = document.getElementById('incomeCategoryManageList');
       const expenseList = document.getElementById('expenseCategoryManageList');
 
-      const incomeCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === 'Income');
-      const expenseCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === 'Expense');
+      const incomeCats = state.rawCategories.filter(c => String(typeMap.get(Number(c.type)) || '').toLowerCase().includes('income'));
+      const expenseCats = state.rawCategories.filter(c => !String(typeMap.get(Number(c.type)) || '').toLowerCase().includes('income'));
 
       incomeList.innerHTML = incomeCats.map(c => `
         <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs font-semibold">
@@ -1173,23 +832,90 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       }
     }
 
-
-    // =========================================================================
-    // 4. UI HANDLERS & MODAL CONTROL
-    // =========================================================================
-
     window.app = {
-      // Month navigation
+      useLocalPreview() {
+        processLocalData();
+      },
+
+      applyBackendDashboard({ categories = [], summary = {}, month = null }) {
+        state.isApiLive = true;
+        if (month) {
+          state.currentYearMonth = month;
+        }
+
+        state.rawCategories = categories.map((c) => ({
+          id: Number(c.id),
+          type: Number(c.typeId ?? c.type ?? 1),
+          subtype: String(c.subtype || 'Uncategorized').trim(),
+          categoryType: String(c.categoryType || 'Expense').trim()
+        }));
+
+        const derivedTypes = Array.from(
+          new Map(
+            state.rawCategories.map((c) => [
+              c.type,
+              { id: c.type, type: c.categoryType }
+            ])
+          ).values()
+        );
+        if (derivedTypes.length > 0) {
+          state.rawCategoryTypes = derivedTypes;
+        }
+
+        const txRows = Array.isArray(summary.transactions) ? summary.transactions : [];
+        state.enrichedRows = txRows.map((row) => ({
+          id: row.id,
+          date: String(row.date || '').trim(),
+          store: String(row.store || '').trim(),
+          description: row.description ? String(row.description).trim() : '',
+          amount: Math.abs(Number(row.amount) || 0),
+          category: Number(row.category),
+          subtype: String(row.subtype || 'Uncategorized').trim(),
+          categoryType: String(row.categoryType || 'Expense').trim()
+        }));
+
+        const totalIncome = Number(summary.totalIncome) || 0;
+        const totalExpenses = Number(summary.totalExpenses) || 0;
+        const netBalance = summary.netBalance !== undefined ? Number(summary.netBalance) : totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? Math.max(0, ((totalIncome - totalExpenses) / totalIncome) * 100) : 0;
+
+        const monthSummary = {
+          yearMonth: summary.month || state.currentYearMonth,
+          totalIncome,
+          totalExpenses,
+          netBalance,
+          savingsRate,
+          incomeCount: state.enrichedRows.filter((r) => String(r.categoryType || '').toLowerCase().includes('income')).length,
+          expenseCount: state.enrichedRows.filter((r) => !String(r.categoryType || '').toLowerCase().includes('income')).length,
+          incomeByCategory: summary.incomeByCategory || {},
+          expenseByCategory: summary.expenseByCategory || {},
+          transactions: state.enrichedRows
+        };
+
+        renderHeaderAndKPIs(monthSummary);
+        renderIncomeBreakdown(monthSummary);
+        renderExpenseBreakdown(monthSummary);
+        renderRecentTransactions(monthSummary.transactions);
+        renderHistoryTab();
+        renderCategoriesTab();
+        updateStatusBadge(true, `API Live (${state.enrichedRows.length} rows)`);
+      },
+
       changeMonth(delta) {
         const [yr, mo] = state.currentYearMonth.split('-');
-        let d = new Date(parseInt(yr), parseInt(mo) - 1 + delta, 1);
+        const d = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1 + delta, 1);
         const newYr = d.getFullYear();
         const newMo = String(d.getMonth() + 1).padStart(2, '0');
         state.currentYearMonth = `${newYr}-${newMo}`;
         renderAll();
+
+        if (localStorage.getItem('expense_auth_token') && typeof window.refreshDashboardData === 'function') {
+          window.refreshDashboardData(state.currentYearMonth).catch((err) => {
+            app.showToast(`Sync error: ${err.message}`, true);
+          });
+        }
       },
 
-      // Tab Switcher
       switchTab(tabId) {
         state.currentTab = tabId;
         ['overview', 'history', 'categories'].forEach(t => {
@@ -1209,31 +935,12 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
         });
       },
 
-      // Transaction Form Modal
-      openTransactionModal(editingRow = null) {
+      openTransactionModal() {
         const modal = document.getElementById('transactionModal');
-        const title = document.getElementById('txModalTitle');
         const form = document.getElementById('txForm');
-
         form.reset();
         document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-
-        if (editingRow) {
-          state.editingTxId = editingRow.id;
-          title.textContent = 'Edit Transaction';
-          document.getElementById('txId').value = editingRow.id;
-          document.getElementById('txDate').value = editingRow.date;
-          document.getElementById('txStore').value = editingRow.store;
-          document.getElementById('txDescription').value = editingRow.description || '';
-          document.getElementById('txAmount').value = editingRow.amount;
-          this.setFormType(editingRow.categoryType);
-          document.getElementById('txCategory').value = editingRow.category;
-        } else {
-          state.editingTxId = null;
-          title.textContent = 'Add Transaction';
-          this.setFormType('Expense');
-        }
-
+        this.setFormType('Expense');
         modal.classList.remove('hidden');
       },
 
@@ -1255,9 +962,11 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
           expBtn.className = "py-2.5 rounded-xl font-bold text-sm border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
         }
 
-        // Filter Categories Dropdown based on Type
-        const typeMap = new Map(state.rawCategoryTypes.map(t => [Number(t.id), t.type]));
-        const validCats = state.rawCategories.filter(c => typeMap.get(Number(c.type)) === type);
+        const isIncomeTab = type.toLowerCase() === 'income';
+        const validCats = state.rawCategories.filter(c => {
+          const catTypeLabel = String(c.categoryType || state.rawCategoryTypes.find(t => Number(t.id) === Number(c.type))?.type || 'Expense').toLowerCase();
+          return isIncomeTab ? catTypeLabel.includes('income') : !catTypeLabel.includes('income');
+        });
 
         catSelect.innerHTML = validCats.map(c => `
           <option value="${c.id}">${escapeHtml(c.subtype)}</option>
@@ -1267,16 +976,20 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       async handleTxSubmit(e) {
         e.preventDefault();
         const date = document.getElementById('txDate').value;
-        const store = document.getElementById('txStore').value;
-        const description = document.getElementById('txDescription').value;
-        const amount = document.getElementById('txAmount').value;
-        const categoryId = document.getElementById('txCategory').value;
+        const store = String(document.getElementById('txStore').value || '').trim();
+        const rawDesc = document.getElementById('txDescription').value;
+        const description = rawDesc && rawDesc.trim() ? rawDesc.trim() : null;
+        const amount = Math.abs(Number(document.getElementById('txAmount').value));
+        const categoryId = Number(document.getElementById('txCategory').value);
 
         try {
-          if (state.editingTxId) {
-            await updateTransaction(state.editingTxId, { date, store, description, amount, categoryId });
+          if (state.isApiLive && typeof window.createTransactionViaApi === 'function') {
+            await window.createTransactionViaApi({ date, store, description, amount, categoryId });
+            app.showToast('Transaction saved to Supabase via API!');
           } else {
-            await createTransaction({ date, store, description, amount, categoryId });
+            state.rawTransactions.unshift({ id: Date.now(), date, store, description, amount, category: categoryId });
+            processLocalData();
+            app.showToast('Transaction added in Local Preview Mode.');
           }
           this.closeTransactionModal();
         } catch (err) {
@@ -1284,16 +997,6 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
         }
       },
 
-      editTransaction(id) {
-        const row = state.enrichedRows.find(r => r.id == id);
-        if (row) this.openTransactionModal(row);
-      },
-
-      deleteTx(id) {
-        deleteTransaction(id);
-      },
-
-      // Category Modal
       openCategoryModal() {
         document.getElementById('categoryModal').classList.remove('hidden');
       },
@@ -1305,23 +1008,17 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       async handleCatSubmit(e) {
         e.preventDefault();
         const typeName = document.getElementById('catTypeSelect').value;
-        const subtype = document.getElementById('catSubtypeInput').value;
+        const subtype = String(document.getElementById('catSubtypeInput').value || '').trim();
+        const typeObj = state.rawCategoryTypes.find(t => String(t.type || '').toLowerCase() === typeName.toLowerCase()) || state.rawCategoryTypes[0];
+        const typeId = typeObj ? Number(typeObj.id) : 1;
 
-        try {
-          await createCategory(typeName, subtype);
-          this.closeCategoryModal();
-        } catch (err) {
-          app.showToast(`Error: ${err.message}`, true);
-        }
+        state.rawCategories.push({ id: Date.now(), type: typeId, subtype, categoryType: typeName });
+        renderCategoriesTab();
+        this.closeCategoryModal();
+        app.showToast(`Category '${subtype}' added.`);
       },
 
-      // Config Modal
       openConfigModal() {
-        document.getElementById('cfgUrl').value = SUPABASE_URL;
-        document.getElementById('cfgKey').value = SUPABASE_ANON_KEY;
-        document.getElementById('cfgTxTable').value = TABLE_TRANSACTIONS;
-        document.getElementById('cfgCatTable').value = TABLE_CATEGORIES;
-        document.getElementById('cfgTypeTable').value = TABLE_CATEGORY_TYPE;
         document.getElementById('configModal').classList.remove('hidden');
       },
 
@@ -1329,59 +1026,10 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
         document.getElementById('configModal').classList.add('hidden');
       },
 
-      handleConfigSave(e) {
-        e.preventDefault();
-        SUPABASE_URL = document.getElementById('cfgUrl').value.trim();
-        SUPABASE_ANON_KEY = document.getElementById('cfgKey').value.trim();
-        TABLE_TRANSACTIONS = document.getElementById('cfgTxTable').value.trim() || 'Transactions';
-        TABLE_CATEGORIES = document.getElementById('cfgCatTable').value.trim() || 'Categories';
-        TABLE_CATEGORY_TYPE = document.getElementById('cfgTypeTable').value.trim() || 'CategoryType';
-
-        localStorage.setItem('supabase_url', SUPABASE_URL);
-        localStorage.setItem('supabase_anon_key', SUPABASE_ANON_KEY);
-        localStorage.setItem('table_tx', TABLE_TRANSACTIONS);
-        localStorage.setItem('table_cats', TABLE_CATEGORIES);
-        localStorage.setItem('table_cat_types', TABLE_CATEGORY_TYPE);
-
-        this.closeConfigModal();
-        refreshData();
-      },
-
-      async testSupabaseConnection() {
-        const testUrl = document.getElementById('cfgUrl').value.trim();
-        const testKey = document.getElementById('cfgKey').value.trim();
-
-        if (!testUrl || !testKey) {
-          alert('Please enter both Supabase URL and Anon Key to test.');
-          return;
-        }
-
-        try {
-          const testClient = createClient(testUrl, testKey);
-          const { data, error } = await testClient.from(document.getElementById('cfgTxTable').value.trim() || 'Transactions').select('id').limit(1);
-
-          if (error) throw error;
-          alert('Connection Successful! Supabase is reachable and read permissions are granted.');
-        } catch (err) {
-          alert(`Connection Test Failed:\n${err.message}`);
-        }
-      },
-
-      clearCredentials() {
-        localStorage.removeItem('supabase_url');
-        localStorage.removeItem('supabase_anon_key');
-        SUPABASE_URL = '';
-        SUPABASE_ANON_KEY = '';
-        this.closeConfigModal();
-        refreshData();
-        this.showToast('Cleared API keys. Reverted to Demo Mode.');
-      },
-
       filterHistory() {
         filterHistory();
       },
 
-      // Toast System
       showToast(msg, isError = false) {
         const toast = document.getElementById('toastContainer');
         const content = document.getElementById('toastContent');
@@ -1412,7 +1060,6 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       }
     };
 
-    // Helper Utilities
     function formatCurrency(val) {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
     }
@@ -1423,10 +1070,11 @@ CREATE POLICY "Allow CategoryType" ON public."CategoryType" FOR ALL TO anon, aut
       })[m]);
     }
 
-    // Initialize App on DOM Ready
     window.addEventListener('DOMContentLoaded', () => {
-      refreshData();
+      processLocalData();
     });
   </script>
+
+  <script type="module" src="./auth.js"></script>
 </body>
 </html>
