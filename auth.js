@@ -1,4 +1,4 @@
-const API_BASE = 'https://expense-api-6nkw.onrender.com/';
+const API_BASE = 'https://expense-api-6nkw.onrender.com';
 const TOKEN_KEY = 'expense_auth_token';
 
 const loginModal = document.getElementById('loginModal');
