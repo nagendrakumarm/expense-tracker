@@ -22,7 +22,7 @@ export function buildCategoryMonthComparison(rows, months) {
     totalsByMonth[ym] = {};
   }
 
-  for (const row of rows) {
+  for (const row of rows || []) {
     const ym = String(row.date || '').slice(0, 7);
     if (!totalsByMonth[ym]) continue;
 
@@ -54,14 +54,23 @@ export function renderComparisonMatrix({
   months = [],
   categories = [],
   totals_by_month = {},
+  incomeCategoryNames = [],
   existingChart = null,
   formatCurrency,
   escapeHtml
 }) {
+  const incomeSet = new Set(
+    (incomeCategoryNames || []).map((name) => String(name || '').trim().toLowerCase())
+  );
+
+  const filteredCategories = (categories || []).filter(
+    (cat) => !incomeSet.has(String(cat || '').trim().toLowerCase())
+  );
+
   const palette = ['#6750A4', '#0F766E', '#E11D48', '#D97706', '#0284C7', '#4F46E5'];
   const datasets = months.map((ym, idx) => ({
     label: formatMonthShort(ym),
-    data: categories.map((cat) => Number(totals_by_month?.[ym]?.[cat] || 0)),
+    data: filteredCategories.map((cat) => Number(totals_by_month?.[ym]?.[cat] || 0)),
     backgroundColor: palette[idx % palette.length],
     borderRadius: 6
   }));
@@ -73,8 +82,8 @@ export function renderComparisonMatrix({
     chartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: categories.length ? categories : ['No Expenses'],
-        datasets: categories.length
+        labels: filteredCategories.length ? filteredCategories : ['No Expenses'],
+        datasets: filteredCategories.length
           ? datasets
           : [{ label: 'Expenses', data: months.map(() => 0), backgroundColor: '#CBD5E1' }]
       },
@@ -94,18 +103,27 @@ export function renderComparisonMatrix({
 
   const tableEl = document.getElementById('categoryCompareTable');
   if (tableEl) {
-    if (categories.length === 0) {
+    if (filteredCategories.length === 0) {
       tableEl.innerHTML = `<p class="text-xs text-slate-400 italic py-3">No expense transactions in the selected months.</p>`;
     } else {
       const headerCells = months
         .map((ym) => `<th class="py-2 px-3 text-right">${escapeHtml(formatMonthShort(ym))}</th>`)
         .join('');
-      const bodyRows = categories
+      const bodyRows = filteredCategories
         .map((cat) => {
           const cells = months
             .map((ym) => `<td class="py-2 px-3 text-right font-medium">${formatCurrency(totals_by_month?.[ym]?.[cat] || 0)}</td>`)
             .join('');
           return `<tr class="border-t border-slate-100 dark:border-slate-800"><td class="py-2 px-3 font-semibold">${escapeHtml(cat)}</td>${cells}</tr>`;
+        })
+        .join('');
+      const totalCells = months
+        .map((ym) => {
+          const monthTotal = filteredCategories.reduce(
+            (sum, cat) => sum + (Number(totals_by_month?.[ym]?.[cat]) || 0),
+            0
+          );
+          return `<td class="py-2 px-3 text-right font-extrabold text-slate-900 dark:text-slate-100">${formatCurrency(monthTotal)}</td>`;
         })
         .join('');
 
@@ -118,6 +136,12 @@ export function renderComparisonMatrix({
             </tr>
           </thead>
           <tbody>${bodyRows}</tbody>
+          <tfoot>
+            <tr class="border-t-2 border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60">
+              <td class="py-2.5 px-3 font-extrabold text-slate-900 dark:text-slate-100">Total</td>
+              ${totalCells}
+            </tr>
+          </tfoot>
         </table>
       `;
     }
